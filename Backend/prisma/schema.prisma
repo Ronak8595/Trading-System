@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // or your database provider
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CLIENT
+  MANAGER
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(CLIENT)
+  wallet    Wallet?
+  socketId  String   @unique
+  createdAt DateTime @default(now())
+  orders    Order[]
+}
+
+model Wallet {
+  id     Int           @id @default(autoincrement())
+  user   User          @relation(fields: [userId], references: [id])
+  userId Int           @unique // Ensure a user has only one wallet
+  tokens WalletToken[]
+}
+
+model WalletToken {
+  id       Int    @id @default(autoincrement())
+  wallet   Wallet @relation(fields: [walletId], references: [id])
+  walletId Int
+  token    Token  @relation(fields: [tokenId], references: [id])
+  tokenId  Int
+  quantity Float  @default(0.0)
+
+  @@unique([walletId, tokenId]) // Ensure a token appears only once per wallet
+}
+
+model Token {
+  id             Int           @id @default(autoincrement())
+  name           String        @unique
+  symbol         String        @unique
+  conversionRate Float         @default(0.0) // Current conversion rate of the token
+  walletToken    WalletToken[]
+  orderFrom      Order[]       @relation("fromToken")
+  orderTo        Order[]       @relation("toToken")
+}
+
+model Order {
+  id Int @id @default(autoincrement())
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  fromToken   Token @relation("fromToken", fields: [fromTokenId], references: [id])
+  fromTokenId Int
+
+  toToken   Token @relation("toToken", fields: [toTokenId], references: [id])
+  toTokenId Int
+
+  quantity        Float // Quantity of the fromToken to trade
+  settledQuantity Float @default(0.0) // Quantity of the fromToken already traded
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
