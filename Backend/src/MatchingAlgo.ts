@@ -1,4 +1,4 @@
-type OrderType = "buy" | "sell";
+type OrderType = "BUY" | "SELL";
 
 interface Order {
 	id: string;
@@ -12,13 +12,8 @@ interface Order {
 const buyOrders: Record<string, Heap<Order>> = {};
 const sellOrders: Record<string, Heap<Order>> = {};
 
-// WebSocket placeholder function for sending data
-function mockWebSocketSend(data: any) {
-	console.log("Sending to WebSocket:", JSON.stringify(data, null, 2));
-}
-
-function addOrder(order: Order) {
-	if (order.type === "buy") {
+function addOrder(order: Order, sendEvent: (data: any) => void) {
+	if (order.type === "BUY") {
 		if (!buyOrders[order.pair])
 			buyOrders[order.pair] = new Heap((a, b) => {
 				if (a.price === b.price) return a.orderPlacedTime - b.orderPlacedTime;
@@ -34,10 +29,14 @@ function addOrder(order: Order) {
 		sellOrders[order.pair].push(order);
 	}
 	console.log(`Order ${order.id} added successfully.`);
-	generateMatchingPairs();
+	generateMatchingPairs(sendEvent);
 }
 
-function updateOrderQuantity(orderId: string, quantityToDeduct: number) {
+function updateOrderQuantity(
+	orderId: string,
+	quantityToDeduct: number,
+	sendEvent: (data: any) => void
+) {
 	let updated = false;
 
 	[buyOrders, sellOrders].forEach((orderMap) => {
@@ -61,10 +60,10 @@ function updateOrderQuantity(orderId: string, quantityToDeduct: number) {
 	});
 
 	if (!updated) console.warn(`Order ID ${orderId} not found. Update failed.`);
-	generateMatchingPairs();
+	generateMatchingPairs(sendEvent);
 }
 
-function deleteOrExpiry(orderId: string) {
+function deleteOrExpiry(orderId: string, sendEvent: (data: any) => void) {
 	let deleted = false;
 
 	[buyOrders, sellOrders].forEach((orderMap) => {
@@ -80,7 +79,7 @@ function deleteOrExpiry(orderId: string) {
 	});
 
 	if (!deleted) console.warn(`Order ID ${orderId} not found.`);
-	generateMatchingPairs();
+	generateMatchingPairs(sendEvent);
 }
 
 function deepCopyOrder(order: Order): Order {
@@ -89,7 +88,7 @@ function deepCopyOrder(order: Order): Order {
 	};
 }
 
-function generateMatchingPairs() {
+function generateMatchingPairs(sendEvent: (data: any) => void) {
 	const matchingPairs: any[] = [];
 
 	for (const pair in buyOrders) {
@@ -149,7 +148,7 @@ function generateMatchingPairs() {
 		console.log("Matching pairs generated successfully.");
 	}
 
-	return matchingPairs;
+	sendEvent(matchingPairs);
 }
 
 class Heap<T> {
@@ -216,57 +215,5 @@ class Heap<T> {
 		[this.data[i], this.data[j]] = [this.data[j], this.data[i]];
 	}
 }
-
-// Sample use cases:
-
-// Add orders
-addOrder({
-	id: "1",
-	pair: "BTC-USDT",
-	type: "buy",
-	price: 26900,
-	quantity: 1.5,
-	orderPlacedTime: Date.now(),
-});
-addOrder({
-	id: "2",
-	pair: "BTC-USDT",
-	type: "sell",
-	price: 26900,
-	quantity: 1,
-	orderPlacedTime: Date.now() - 5000,
-});
-addOrder({
-	id: "3",
-	pair: "BTC-USDT",
-	type: "buy",
-	price: 26800,
-	quantity: 0.5,
-	orderPlacedTime: Date.now() - 10000,
-});
-addOrder({
-	id: "4",
-	pair: "BTC-USDT",
-	type: "sell",
-	price: 26800,
-	quantity: 1,
-	orderPlacedTime: Date.now() - 15000,
-});
-
-// Update an order's quantity
-updateOrderQuantity("1", 1);
-
-// Delete/expire an order
-deleteOrExpiry("2");
-
-// Add new orders after deletion
-addOrder({
-	id: "5",
-	pair: "BTC-USDT",
-	type: "buy",
-	price: 27000,
-	quantity: 0.8,
-	orderPlacedTime: Date.now(),
-});
 
 export { addOrder, generateMatchingPairs, deleteOrExpiry, updateOrderQuantity };

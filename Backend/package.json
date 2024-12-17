@@ -5,6 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "concurrently \"tsc -w\" \"node --watch dist/index.js\"",
+		"sample": "tsc & node dist/sampleDataPush.js",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"keywords": [],

@@ -18,7 +18,8 @@ model User {
   name      String?
   role      UserRole @default(CLIENT)
   wallet    Wallet?
-  socketId  String   @unique
+  walletId  Int?
+  socketId  String?  @unique
   createdAt DateTime @default(now())
   orders    Order[]
 }
@@ -47,8 +48,11 @@ model Token {
   symbol         String        @unique
   conversionRate Float         @default(0.0) // Current conversion rate of the token
   walletToken    WalletToken[]
-  orderFrom      Order[]       @relation("fromToken")
-  orderTo        Order[]       @relation("toToken")
+}
+
+enum OrderType {
+  BUY
+  SELL
 }
 
 model Order {
@@ -57,11 +61,13 @@ model Order {
   user   User @relation(fields: [userId], references: [id])
   userId Int
 
-  fromToken   Token @relation("fromToken", fields: [fromTokenId], references: [id])
-  fromTokenId Int
+  tokenPair String
 
-  toToken   Token @relation("toToken", fields: [toTokenId], references: [id])
-  toTokenId Int
+  price Float
+
+  expiryDate DateTime
+
+  orderType OrderType
 
   quantity        Float // Quantity of the fromToken to trade
   settledQuantity Float @default(0.0) // Quantity of the fromToken already traded

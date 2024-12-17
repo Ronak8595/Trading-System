@@ -2,35 +2,30 @@ import express, { type Request, type Response } from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { db } from "./db.js";
-import { generateMatchingPairs, addOrder } from "./MatchingAlgo.js";
+import { addOrder, updateOrderQuantity } from "./MatchingAlgo.js";
 
 const app = express();
 const server = createServer(app);
 const io = new Server(server);
 
-interface ConversionRate {
-	symbol: string;
-	price: string;
-}
-
 // Calling Binance API in 5 seconds interval
-setInterval(async () => {
-	const API = "https://api.binance.com/api/v3/ticker/price";
+// setInterval(async () => {
+// 	const API = "https://api.binance.com/api/v3/ticker/price";
 
-	const res = await fetch(API);
-	const data: ConversionRate[] = await res.json();
+// 	const res = await fetch(API);
+// 	const data: ConversionRate[] = await res.json();
 
-	data.forEach((rate: ConversionRate) => {
-		db.token.update({
-			where: {
-				symbol: rate.symbol,
-			},
-			data: {
-				conversionRate: parseFloat(rate.price),
-			},
-		});
-	});
-}, 50000);
+// 	data.forEach((rate: ConversionRate) => {
+// 		db.token.update({
+// 			where: {
+// 				symbol: rate.symbol,
+// 			},
+// 			data: {
+// 				conversionRate: parseFloat(rate.price),
+// 			},
+// 		});
+// 	});
+// }, 50000);
 
 // Middleware to parse JSON requests
 app.use(express.json());
@@ -46,13 +41,15 @@ app.post("/signin", async (req, res) => {
 
 		const { email, name, socketId }: RequestBody = req.body;
 
-		if (!name || !email || !socketId) {
-			res.status(400).json({ error: "Name, Email and socketId are required" });
+		if (!email || !socketId) {
+			res.status(400).json({ error: "Email and socketId are required" });
 			return;
 		}
 
 		// Find user
-		let user = await db.user.findUnique({ where: { email } });
+		let user = await db.user.findUnique({
+			where: { email },
+		});
 
 		if (!user) {
 			// Create user
@@ -62,12 +59,26 @@ app.post("/signin", async (req, res) => {
 					name,
 					socketId,
 				},
+				include: {
+					wallet: {
+						include: {
+							tokens: true,
+						},
+					},
+				},
 			});
 		} else {
 			// Update user with the latest socketId
-			await db.user.update({
+			user = await db.user.update({
 				where: { id: user.id },
 				data: { socketId },
+				include: {
+					wallet: {
+						include: {
+							tokens: true,
+						},
+					},
+				},
 			});
 		}
 
@@ -81,10 +92,10 @@ app.post("/signin", async (req, res) => {
 // Create an order
 app.post("/orders", async (req: Request, res: Response) => {
 	try {
-		const { userId, fromTokenId, toTokenId, quantity } = req.body;
+		const { userId, orderType, tokenPair, price, quantity, expiryDate } = req.body;
 
 		// Validate the input
-		if (!userId || !fromTokenId || !toTokenId || !quantity) {
+		if (!userId || !quantity || !orderType || !price || !expiryDate || !tokenPair) {
 			res.status(400).json({ error: "Missing required fields" });
 			return;
 		}
@@ -93,38 +104,30 @@ app.post("/orders", async (req: Request, res: Response) => {
 		const order = await db.order.create({
 			data: {
 				userId,
-				fromTokenId,
-				toTokenId,
+				orderType,
+				expiryDate,
+				price,
+				tokenPair,
 				quantity,
 			},
 		});
 
-		const fromToken = await db.token.findFirst({
-			where: {
-				id: order.fromTokenId,
+		function sendEvent(data: any) {
+			console.log(data);
+			io.emit("matching-pairs", data);
+		}
+
+		addOrder(
+			{
+				id: order.id.toString(),
+				type: orderType,
+				orderPlacedTime: order.createdAt.getTime(),
+				pair: tokenPair,
+				price,
+				quantity,
 			},
-		});
-
-		const toToken = await db.token.findFirst({
-			where: {
-				id: order.toTokenId,
-			},
-		});
-
-		if (!fromToken || !toToken) return;
-
-		addOrder({
-			id: order.id.toString(),
-			type: "buy",
-			orderPlacedTime: order.createdAt.getTime(),
-			pair: `${fromToken.symbol}-${toToken.symbol}`,
-			price: fromToken.conversionRate / toToken.conversionRate,
-			quantity: order.quantity,
-		});
-
-		const matchingPairs = generateMatchingPairs();
-
-		io.send("matching-pairs", matchingPairs);
+			sendEvent
+		);
 
 		res.status(201).json(order);
 	} catch (error) {
@@ -141,10 +144,6 @@ app.get("/users/:userId/orders", async (req: Request, res: Response) => {
 		// Fetch orders for the user
 		const orders = await db.order.findMany({
 			where: { userId: parseInt(userId) },
-			include: {
-				fromToken: true,
-				toToken: true,
-			},
 		});
 
 		res.status(200).json(orders);
@@ -162,11 +161,6 @@ app.get("/orders/:orderId", async (req: Request, res: Response) => {
 		// Fetch the order details
 		const order = await db.order.findUnique({
 			where: { id: parseInt(orderId) },
-			include: {
-				fromToken: true,
-				toToken: true,
-				user: true,
-			},
 		});
 
 		if (!order) {
@@ -197,8 +191,16 @@ io.on("connection", (socket) => {
 				},
 			});
 
-			// Broadcast the updated order to all clients
-			io.emit("order_status_updated", order);
+			function sendEvent(data: any) {
+				console.log(order);
+				console.log(data);
+				// Broadcast the updated order to all clients
+				io.emit("order_status_updated", order);
+				// Broadcast the matching pair to managers
+				io.emit("matching-pairs", data);
+			}
+
+			updateOrderQuantity(order.id.toString(), quantitySettled, sendEvent);
 		} catch (error) {
 			console.error("Error updating order status:", error);
 		}
