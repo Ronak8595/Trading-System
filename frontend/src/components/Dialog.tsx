@@ -1,4 +1,6 @@
 "use client";
+
+import { useEffect, useState } from "react";
 import * as React from "react";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
@@ -42,7 +44,15 @@ interface FormData {
 	expirationDate: Date | undefined;
 }
 
+interface ConversionRate {
+	symbol: string;
+	price: string;
+}
+
 export function Dialog() {
+	const [conversionRate, setConversionRate] = useState<ConversionRate[]>([]);
+	const [price, setPrice] = useState<number | undefined>(undefined);
+
 	const { register, handleSubmit, setValue, watch } = useForm<FormData>({
 		defaultValues: {
 			asset: undefined,
@@ -66,8 +76,37 @@ export function Dialog() {
 	};
 
 	const onSubmit: SubmitHandler<FormData> = (data) => {
+		setPrice(data.price);
 		console.log("Form Data on Submit:", data);
 	};
+
+	useEffect(() => {
+		const fetchConversionRate = async () => {
+			const API = "https://api.binance.com/api/v3/ticker/price";
+
+			try {
+				const res = await fetch(API);
+				const data: ConversionRate[] = await res.json();
+
+				setConversionRate((prevState) => {
+					// Stop adding if we already have 10 items
+					if (prevState.length >= 15) return prevState;
+
+					// Add new rates to the state and ensure we don't exceed 10 items
+					const newRates = [...prevState, ...data].slice(0, 15);
+					return newRates;
+				});
+			} catch (error) {
+				console.error("Error fetching conversion rates:", error);
+			}
+		};
+
+		// Set interval for 5 seconds
+		const intervalId = setInterval(fetchConversionRate, 5000);
+
+		// Cleanup interval on unmount
+		return () => clearInterval(intervalId);
+	}, []);
 
 	return (
 		<div>
@@ -96,13 +135,21 @@ export function Dialog() {
 									</SelectTrigger>
 									<SelectContent>
 										<SelectGroup>
-											<SelectLabel>Fruits</SelectLabel>
-											<SelectItem value="apple">
-												Apple
-											</SelectItem>
-											<SelectItem value="banana">
-												Banana
-											</SelectItem>
+											{conversionRate.map((rate) => (
+												<SelectItem
+													value={
+														rate.symbol +
+														" : " +
+														rate.price
+													}
+													className="flex justify-between items-center gap-6 "
+												>
+													<h5>{rate.symbol}</h5>
+													<h5 className="text-blue-600">
+														{rate.price}
+													</h5>
+												</SelectItem>
+											))}
 										</SelectGroup>
 									</SelectContent>
 								</Select>
@@ -114,8 +161,7 @@ export function Dialog() {
 									htmlFor="quantity"
 									className="text-right"
 								>
-									Quantity
-								</Label>
+									Quantity								</Label>
 								<Input
 									id="quantity"
 									className="col-span-3"
@@ -125,17 +171,20 @@ export function Dialog() {
 
 							{/* Price Input */}
 							<div className="grid grid-cols-4 items-center gap-4">
-								<Label htmlFor="price" className="text-right">
-									Price
-								</Label>
-								<Input
-									id="price"
-									className="col-span-3"
-									type="number"
-									{...register("price", {
-										valueAsNumber: true,
-									})}
-								/>
+								<Select
+									onValueChange={(value) =>
+										setValue("asset", value)
+									}
+								>
+									<SelectTrigger className="w-[200px]">
+										<SelectValue placeholder="BUY/SELL" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectGroup></SelectGroup>
+										<SelectItem value="BUY">BUY</SelectItem>
+										<SelectItem value="SELL">SELL</SelectItem>
+									</SelectContent>
+								</Select>
 							</div>
 
 							{/* Expiration Option */}

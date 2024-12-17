@@ -8,29 +8,29 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server);
 
-interface ConversionRate {
-  symbol: string;
-  price: string;
-}
+// interface ConversionRate {
+//   symbol: string;
+//   price: string;
+// }
 
 // Calling Binance API in 5 seconds interval
-setInterval(async () => {
-  const API = "https://api.binance.com/api/v3/ticker/price";
+// setInterval(async () => {
+//   const API = "https://api.binance.com/api/v3/ticker/price";
 
-  const res = await fetch(API);
-  const data: ConversionRate[] = await res.json();
+//   const res = await fetch(API);
+//   const data: ConversionRate[] = await res.json();
 
-  data.forEach((rate: ConversionRate) => {
-    db.token.update({
-      where: {
-        symbol: rate.symbol,
-      },
-      data: {
-        conversionRate: parseFloat(rate.price),
-      },
-    });
-  });
-}, 50000);
+//   data.forEach((rate: ConversionRate) => {
+//     db.token.update({
+//       where: {
+//         symbol: rate.symbol,
+//       },
+//       data: {
+//         conversionRate: parseFloat(rate.price),
+//       },
+//     });
+//   });
+// }, 50000);
 
 // Middleware to parse JSON requests
 app.use(express.json());
