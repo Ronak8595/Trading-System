@@ -1,27 +1,26 @@
 {
-	"name": "trading-system",
-	"version": "1.0.0",
-	"main": "index.ts",
-	"type": "module",
-	"scripts": {
-		"dev": "concurrently \"tsc -w\" \"node --watch dist/index.js\"",
-		"sample": "tsc & node dist/sampleDataPush.js",
-		"test": "echo \"Error: no test specified\" && exit 1"
-	},
-	"keywords": [],
-	"author": "",
-	"license": "ISC",
-	"description": "",
-	"dependencies": {
-		"@prisma/client": "^6.0.1",
-		"express": "^4.21.2",
-		"socket.io": "^4.8.1"
-	},
-	"devDependencies": {
-		"@types/express": "^5.0.0",
-		"@types/node": "^22.10.2",
-		"concurrently": "^9.1.0",
-		"prisma": "^6.0.1",
-		"typescript": "^5.7.2"
-	}
+  "name": "trading-system",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"tsc -w\" \"node --watch dist/index.js\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@prisma/client": "^6.0.1",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "concurrently": "^9.1.0",
+    "prisma": "^6.0.1",
+    "typescript": "^5.7.2"
+  }
 }
