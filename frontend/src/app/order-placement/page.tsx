@@ -24,32 +24,86 @@ interface Order {
   updatedAt: string;
 }
 
+interface Token {
+  id: number;
+  walletId: number;
+  tokenId: number;
+  quantity: number;
+}
+
+interface Wallet {
+  id: number;
+  userId: number;
+  tokens: Token[];
+}
+
+interface User {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+  walletId: number;
+  socketId: string;
+  createdAt: string;
+  wallet: Wallet;
+}
+
 const OrderPlacement = () => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [user, setUser] = useState<User | null>(null); // Updated type
   const userId = 1;
 
-  const fetchOrders = async () => {
+  const tokenMapping: { [key: number]: string } = {
+    2000: "BTC",
+    2001: "ETH",
+    2002: "USDT",
+  };
+
+  const getOrderHistory = async () => {
+    const response = await fetch(
+      `http://localhost:8000/users/${userId}/orders`
+    );
+    const data = await response.json();
+    setOrders(data);
+  };
+
+  const getUser = async () => {
+    const requestBody = {
+      email: "p4@xxx.com",
+      name: "p4priyanshi",
+      socketId: "dscsn",
+    };
+
     try {
-      const response = await fetch(`/users/${userId}/orders`);
+      const response = await fetch("http://localhost:8000/signin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
       if (!response.ok) {
-        throw new Error("Failed to fetch orders");
+        throw new Error(`Error: ${response.status} ${response.statusText}`);
       }
-      const data: Order[] = await response.json();
-      setOrders(data);
+
+      const data = await response.json();
+      setUser(data);
     } catch (error) {
-      console.error("Error fetching orders:", error);
+      console.error("Error fetching user:", error);
     }
   };
+
+  useEffect(() => {
+    getUser();
+    getOrderHistory();
+  }, []);
 
   const getStatus = (quantity: number, settledQuantity: number): string => {
     if (settledQuantity === quantity) return "COMPLETED";
     if (settledQuantity !== 0) return "PARTIAL";
     return "IN PROCESS";
   };
-
-  useEffect(() => {
-    fetchOrders();
-  }, []);
 
   return (
     <div className="h-full w-full">
@@ -61,15 +115,29 @@ const OrderPlacement = () => {
               Total Balance
             </h2>
             <div className="w-full flex justify-between items-center flex-col gap-4">
-              <div className="flex justify-between w-full">
-                <h3>USD</h3> <h3>$1000.00</h3> <h3>BUY</h3> <h3>SWAP</h3>
-              </div>
-              <div className="flex justify-between w-full">
-                <h3>BTC</h3> <h3>$9900.00</h3> <h3>BUY</h3> <h3>SWAP</h3>
-              </div>
-              <div className="flex justify-between w-full">
-                <h3>ETH</h3> <h3>$2000.00</h3> <h3>BUY</h3> <h3>SWAP</h3>
-              </div>
+              {user &&
+              user.wallet &&
+              user.wallet.tokens &&
+              user.wallet.tokens.length > 0 ? (
+                user.wallet.tokens.map((token) => {
+                  const tokenName =
+                    tokenMapping[token.tokenId as keyof typeof tokenMapping] ||
+                    "Unknown Token";
+
+                  return (
+                    <div key={token.id} className="flex justify-between w-full">
+                      <h3>{tokenName}</h3>
+                      <h3>{token.quantity}</h3>
+                      <h3>BUY</h3>
+                      <h3>SWAP</h3>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex justify-between w-full">
+                  <h3>Your wallet is empty...</h3>
+                </div>
+              )}
             </div>
           </div>
           <Dialog />
