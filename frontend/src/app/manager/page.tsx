@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useEffect } from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -234,6 +235,16 @@ const ManagerPage = () => {
       rowSelection,
     },
   });
+
+  const handleApiCall = async () => {
+    const response = await fetch("http://localhost:8000/users/1/orders");
+    const data = await response.json();
+    console.log(data);
+  };
+
+  useEffect(() => {
+    handleApiCall();
+  }, []);
 
   return (
     <div className="w-full">

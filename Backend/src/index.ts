@@ -3,6 +3,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { db } from "./db.js";
 import { addOrder, updateOrderQuantity } from "./MatchingAlgo.js";
+import cors from "cors";
 
 const app = express();
 const server = createServer(app);
@@ -28,6 +29,7 @@ const io = new Server(server);
 // }, 50000);
 
 // Middleware to parse JSON requests
+app.use(cors());
 app.use(express.json());
 
 // Sign in a user and store the socket ID
