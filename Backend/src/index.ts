@@ -7,7 +7,14 @@ import cors from "cors";
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server);
+
+const io = new Server(server, {
+	cors: {
+		origin: "http://localhost:3000", // Allow frontend origin
+		methods: ["GET", "POST"],
+		credentials: true,
+	},
+});
 
 // Calling Binance API in 5 seconds interval
 // setInterval(async () => {
@@ -29,19 +36,25 @@ const io = new Server(server);
 // }, 50000);
 
 // Middleware to parse JSON requests
-app.use(cors());
+app.use(
+	cors({
+		origin: "http://localhost:3000", // Replace with your frontend URL
+		methods: ["GET", "POST"],
+		credentials: true,
+	})
+);
 app.use(express.json());
 
 // Sign in a user and store the socket ID
 app.post("/signin", async (req, res) => {
-  try {
-    interface RequestBody {
-      email: string;
-      name: string;
-      socketId: string;
-    }
+	try {
+		interface RequestBody {
+			email: string;
+			name: string;
+			socketId: string;
+		}
 
-    const { email, name, socketId }: RequestBody = req.body;
+		const { email, name, socketId }: RequestBody = req.body;
 
 		if (!email || !socketId) {
 			res.status(400).json({ error: "Email and socketId are required" });
@@ -84,20 +97,28 @@ app.post("/signin", async (req, res) => {
 			});
 		}
 
-    res.status(200).json(user);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+		res.status(200).json(user);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error" });
+	}
 });
 
 // Create an order
 app.post("/orders", async (req: Request, res: Response) => {
 	try {
-		const { userId, orderType, tokenPair, price, quantity, expiryDate } = req.body;
+		const { userId, orderType, tokenPair, price, quantity, expiryDate } =
+			req.body;
 
 		// Validate the input
-		if (!userId || !quantity || !orderType || !price || !expiryDate || !tokenPair) {
+		if (
+			!userId ||
+			!quantity ||
+			!orderType ||
+			!price ||
+			!expiryDate ||
+			!tokenPair
+		) {
 			res.status(400).json({ error: "Missing required fields" });
 			return;
 		}
@@ -131,67 +152,67 @@ app.post("/orders", async (req: Request, res: Response) => {
 			sendEvent
 		);
 
-    res.status(201).json(order);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+		res.status(201).json(order);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error" });
+	}
 });
 
 // Get previous orders for a user
 app.get("/users/:userId/orders", async (req: Request, res: Response) => {
-  try {
-    const { userId } = req.params;
+	try {
+		const { userId } = req.params;
 
 		// Fetch orders for the user
 		const orders = await db.order.findMany({
 			where: { userId: parseInt(userId) },
 		});
 
-    res.status(200).json(orders);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+		res.status(200).json(orders);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error" });
+	}
 });
 
 // Get details of a specific order
 app.get("/orders/:orderId", async (req: Request, res: Response) => {
-  try {
-    const { orderId } = req.params;
+	try {
+		const { orderId } = req.params;
 
 		// Fetch the order details
 		const order = await db.order.findUnique({
 			where: { id: parseInt(orderId) },
 		});
 
-    if (!order) {
-      res.status(404).json({ error: "Order not found" });
-      return;
-    }
+		if (!order) {
+			res.status(404).json({ error: "Order not found" });
+			return;
+		}
 
-    res.status(200).json(order);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+		res.status(200).json(order);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error" });
+	}
 });
 
 // Real-time updates using Socket.IO
 io.on("connection", (socket) => {
-  console.log("A user connected");
+	console.log("A user connected");
 
-  // Listen for order status updates from the manager
-  socket.on("update_order_status", async ({ orderId, quantitySettled }) => {
-    try {
-      const order = await db.order.update({
-        where: { id: parseInt(orderId) },
-        data: {
-          settledQuantity: {
-            increment: quantitySettled,
-          },
-        },
-      });
+	// Listen for order status updates from the manager
+	socket.on("update_order_status", async ({ orderId, quantitySettled }) => {
+		try {
+			const order = await db.order.update({
+				where: { id: parseInt(orderId) },
+				data: {
+					settledQuantity: {
+						increment: quantitySettled,
+					},
+				},
+			});
 
 			function sendEvent(data: any) {
 				console.log(order);
@@ -202,17 +223,21 @@ io.on("connection", (socket) => {
 				io.emit("matching-pairs", data);
 			}
 
-			updateOrderQuantity(order.id.toString(), quantitySettled, sendEvent);
+			updateOrderQuantity(
+				order.id.toString(),
+				quantitySettled,
+				sendEvent
+			);
 		} catch (error) {
 			console.error("Error updating order status:", error);
 		}
 	});
 
-  socket.on("disconnect", () => {
-    console.log("A user disconnected");
-  });
+	socket.on("disconnect", () => {
+		console.log("A user disconnected");
+	});
 });
 
 server.listen(8000, () => {
-  console.log("server running at http://localhost:8000");
+	console.log("server running at http://localhost:8000");
 });
