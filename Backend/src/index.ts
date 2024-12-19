@@ -232,6 +232,7 @@ app.post("/user/:userId/createOrders", async (req: Request, res: Response) => {
 				expiryDate: calculatedExpiryDate,
 				durationUnit: durationUnit ?? null,
 				durationValue: durationValue ?? null,
+				settledQuantity: 0
 			},
 		});
 
@@ -270,6 +271,7 @@ app.get("/users/:userId/orders", async (req: Request, res: Response) => {
 		const orders = await db.order.findMany({
 			where: { userId: parseInt(userId) },
 		});
+
 
 		res.status(200).json(orders);
 	} catch (error) {

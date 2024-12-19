@@ -72,6 +72,8 @@ const OrderPlacement = ({
 		);
 		const data = await response.json();
 		setOrders(data);
+
+		
 	};
 
 	// const getUser = async () => {
