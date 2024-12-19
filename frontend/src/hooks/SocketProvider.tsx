@@ -42,7 +42,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
 		_socket.on("matching-pairs", (matchingPairs) => {
 			console.log("Received matching pairs:", matchingPairs);
-			setMatchingPair(matchingPairs); 
+			setMatchingPair(matchingPairs);
 		});
 
 		_socket.on("connect", () => {

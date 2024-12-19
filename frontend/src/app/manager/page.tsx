@@ -36,80 +36,13 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 
-const data: Payment[] = [
-	{
-		id: "m5gr84i9",
-		id1: "ac98ab7s",
-		id2: "m5g9sci9",
-		tradePair: "BTC-USTD",
-		spreadDifference: 100,
-		quantity: "0.099",
-		status: "pending",
-	},
-	{
-		id: "3u1reuv4",
-		id1: "ACas84i9",
-		id2: "koa9J8hn",
-		tradePair: "BTC-USTD",
-		spreadDifference: 100,
-		quantity: "0.099",
-		status: "success",
-	},
-	{
-		id: "derv1ws0",
-		id1: "k98ays22",
-		id2: "sn7oin90",
-		tradePair: "BTC-USTD",
-		spreadDifference: 100,
-		quantity: "0.099",
-		status: "pending",
-	},
-	{
-		id: "5kma53ae",
-		id1: "Ja8hebsq",
-		id2: "ash711bv",
-		tradePair: "BTC-USTD",
-		spreadDifference: 100,
-		quantity: "0.099",
-		status: "success",
-	},
-	{
-		id: "bhqecj4p",
-		id1: "au1b6da",
-		id2: "v76q87o",
-		tradePair: "BTC-USTD",
-		spreadDifference: 100,
-		quantity: "0.099",
-		status: "failed",
-	},
-	{
-		id: "bhaqcj4p",
-		id1: "az8hb1q",
-		id2: "19hcb7gb",
-		tradePair: "BTC-USTD",
-		spreadDifference: 100,
-		quantity: "0.099",
-		status: "failed",
-	},
-	{
-		id: "bha0lj4p",
-		id1: "ao9o7vb",
-		id2: "a1j8qvbc",
-		tradePair: "BTC-USTD",
-		spreadDifference: 100,
-		quantity: "0.099",
-		status: "failed",
-	},
-	{
-		id: "bhaecj4p",
-		id1: "ij89cb7",
-		id2: "cbn71l2v",
-		tradePair: "BTC-USTD",
-		spreadDifference: 100,
-		quantity: "0.099",
-		status: "failed",
-	},
-];
+// buyOrderId: 1;
+// buyOrderPrice: " 0.00099700";
+// pair: "LTCBTC ";
+// quantity: 55;
+// sellOrderId: 1;
+// sellOrderPrice: " 0.00099700";
+// spreadDifference: 0;
 
 export type Payment = {
 	id: string;
@@ -123,24 +56,24 @@ export type Payment = {
 
 export const columns: ColumnDef<Payment>[] = [
 	{
-		accessorKey: "id1",
+		accessorKey: "buyOrderId",
 		header: "Client 1",
 		cell: ({ row }) => (
-			<div className="capitalize">{row.getValue("id1")}</div>
+			<div className="capitalize">{row.getValue("buyOrderId")}</div>
 		),
 	},
 	{
-		accessorKey: "id2",
+		accessorKey: "sellOrderId",
 		header: "Client 2",
 		cell: ({ row }) => (
-			<div className="capitalize">{row.getValue("id2")}</div>
+			<div className="capitalize">{row.getValue("sellOrderId")}</div>
 		),
 	},
 	{
-		accessorKey: "tradePair",
+		accessorKey: "pair",
 		header: "Commodity",
 		cell: ({ row }) => (
-			<div className="capitalize">{row.getValue("tradePair")}</div>
+			<div className="capitalize">{row.getValue("pair")}</div>
 		),
 	},
 	{
@@ -226,8 +159,17 @@ const ManagerPage = () => {
 		React.useState<VisibilityState>({});
 	const [rowSelection, setRowSelection] = React.useState({});
 
+	const { matchingPair } = useSocket();
+	const [payments, setPayments] = useState<Payment[]>(matchingPair);
+
+	useEffect(() => {
+		if (matchingPair) {
+			setPayments(matchingPair);
+		}
+	}, [matchingPair]);
+
 	const table = useReactTable({
-		data,
+		data: payments, // Use payments as the data source
 		columns,
 		onSortingChange: setSorting,
 		onColumnFiltersChange: setColumnFilters,
@@ -245,11 +187,6 @@ const ManagerPage = () => {
 		},
 	});
 
-	// socket
-	const {matchingPair} = useSocket(); 
-
-  console.log("matchingPair",matchingPair);
-
 	return (
 		<div className="w-full">
 			<div className="w-[80%] mx-auto py-10">
@@ -261,12 +198,12 @@ const ManagerPage = () => {
 						placeholder="Filter client..."
 						value={
 							(table
-								.getColumn("id1")
+								.getColumn("buyOrderId")
 								?.getFilterValue() as string) ?? ""
 						}
 						onChange={(event) =>
 							table
-								.getColumn("id1")
+								.getColumn("buyOrderId")
 								?.setFilterValue(event.target.value)
 						}
 						className="max-w-sm"

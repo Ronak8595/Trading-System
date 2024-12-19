@@ -232,25 +232,24 @@ app.post("/user/:userId/createOrders", async (req: Request, res: Response) => {
 				expiryDate: calculatedExpiryDate,
 				durationUnit: durationUnit ?? null,
 				durationValue: durationValue ?? null,
-				settledQuantity: 0
+				settledQuantity: 0,
 			},
 		});
 
 		// Emit the order to the event stream
 		function sendEvent(data: any) {
-			console.log(data);
 			// Example event emitter logic
 			io.emit("matching-pairs", data);
 		}
 
 		addOrder(
 			{
-				id: order.id.toString(),
-				type: assetsSelector,
-				orderPlacedTime: order.createdAt.getTime(),
-				assetsOption,
-				expirationOption,
+				id: userIdInt, // Use the converted userId (integer)
+				pair: assetsSelector.split(":")[0],
 				quantity,
+				type: assetsOption,
+				orderPlacedTime: expiryDate,
+				price: assetsSelector.split(":")[1],
 			},
 			sendEvent
 		);
@@ -271,7 +270,6 @@ app.get("/users/:userId/orders", async (req: Request, res: Response) => {
 		const orders = await db.order.findMany({
 			where: { userId: parseInt(userId) },
 		});
-
 
 		res.status(200).json(orders);
 	} catch (error) {
