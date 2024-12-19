@@ -55,22 +55,26 @@ enum OrderType {
   SELL
 }
 
+enum ExpirationOption {
+  SPECIFIC_DATE
+  DURATION
+}
+
 model Order {
   id Int @id @default(autoincrement())
 
   user   User @relation(fields: [userId], references: [id])
   userId Int
 
-  tokenPair String
+  assetsSelector String // The type of asset (e.g., "LTC/USDT : 0.001")
+  quantity       Int // Quantity of the asset to trade(e.g., 10)
+  assetsOption   OrderType
 
-  price Float
+  expirationOption ExpirationOption // Specifies expiration type (specific date or duration)
+  expiryDate       DateTime? // Expiration date for the order
 
-  expiryDate DateTime
-
-  orderType OrderType
-
-  quantity        Float // Quantity of the fromToken to trade
-  settledQuantity Float @default(0.0) // Quantity of the fromToken already traded
+  durationUnit  String? // Unit of duration-based expiration (e.g., minutes or hours)
+  durationValue Int? // Value for the duration (e.g., 10 for 10 minutes)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

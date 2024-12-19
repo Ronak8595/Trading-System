@@ -105,48 +105,150 @@ app.post("/signin", async (req, res) => {
 });
 
 // Create an order
-app.post("/orders", async (req: Request, res: Response) => {
+// app.post("/orders", async (req: Request, res: Response) => {
+// 	try {
+// 		const { userId, orderType, tokenPair, price, quantity, expiryDate } =
+// 			req.body;
+
+// 		// Validate the input
+// 		if (
+// 			!userId ||
+// 			!quantity ||
+// 			!orderType ||
+// 			!price ||
+// 			!expiryDate ||
+// 			!tokenPair
+// 		) {
+// 			res.status(400).json({ error: "Missing required fields" });
+// 			return;
+// 		}
+
+// 		// Create the order
+// 		const order = await db.order.create({
+// 			data: {
+// 				userId,
+// 				orderType,
+// 				expiryDate,
+// 				price,
+// 				tokenPair,
+// 				quantity,
+// 			},
+// 		});
+
+// 		function sendEvent(data: any) {
+// 			console.log(data);
+// 			io.emit("matching-pairs", data);
+// 		}
+
+// 		addOrder(
+// 			{
+// 				id: order.id.toString(),
+// 				type: orderType,
+// 				orderPlacedTime: order.createdAt.getTime(),
+// 				pair: tokenPair,
+// 				price,
+// 				quantity,
+// 			},
+// 			sendEvent
+// 		);
+
+// 		res.status(201).json(order);
+// 	} catch (error) {
+// 		console.error(error);
+// 		res.status(500).json({ error: "Internal server error" });
+// 	}
+// });
+
+app.post("/user/:userId/createOrders", async (req: Request, res: Response) => {
 	try {
-		const { userId, orderType, tokenPair, price, quantity, expiryDate } =
-			req.body;
+		// Get userId from URL params and convert it to an integer
+		const { userId } = req.params;
+		const userIdInt = parseInt(userId, 10); // Convert userId to an integer
+
+		// Validate if userId is a valid integer
+		if (isNaN(userIdInt)) {
+			res.status(400).json({ error: "Invalid userId format" });
+			return;
+		}
+
+		// Get other fields from the request body
+		const {
+			assetsSelector,
+			quantity,
+			assetsOption,
+			expirationOption,
+			expiryDate,
+			durationUnit,
+			durationValue,
+		} = req.body;
 
 		// Validate the input
 		if (
-			!userId ||
+			!assetsSelector ||
 			!quantity ||
-			!orderType ||
-			!price ||
-			!expiryDate ||
-			!tokenPair
+			!assetsOption ||
+			!expirationOption
 		) {
 			res.status(400).json({ error: "Missing required fields" });
 			return;
 		}
 
-		// Create the order
+		// Determine the expiry date based on the provided options
+		let calculatedExpiryDate: Date | null = null;
+
+		if (expirationOption === "SPECIFIC_DATE") {
+			if (!expiryDate) {
+				res.status(400).json({
+					error: "Expiration date is required for SPECIFIC_DATE option",
+				});
+				return;
+			}
+			calculatedExpiryDate = new Date(expiryDate);
+		} else if (expirationOption === "DURATION") {
+			if (!durationUnit || !durationValue) {
+				res.status(400).json({
+					error: "Duration unit and value are required for DURATION option",
+				});
+				return;
+			}
+			const now = new Date();
+			const multiplier = durationUnit === "minutes" ? 60000 : 3600000; // minutes or hours
+			calculatedExpiryDate = new Date(
+				now.getTime() + durationValue * multiplier
+			);
+		} else {
+			res.status(400).json({ error: "Invalid expiration option" });
+			return;
+		}
+
+		// Create the order in the database
 		const order = await db.order.create({
 			data: {
-				userId,
-				orderType,
-				expiryDate,
-				price,
-				tokenPair,
+				userId: userIdInt, // Use the converted userId (integer)
+				assetsSelector,
 				quantity,
+				assetsOption,
+				expirationOption,
+				expiryDate: calculatedExpiryDate,
+				durationUnit: durationUnit ?? null,
+				durationValue: durationValue ?? null,
 			},
 		});
 
+		// Emit the order to the event stream
 		function sendEvent(data: any) {
 			console.log(data);
+			// Example event emitter logic
 			io.emit("matching-pairs", data);
 		}
 
 		addOrder(
 			{
 				id: order.id.toString(),
-				type: orderType,
+				type: assetsSelector,
 				orderPlacedTime: order.createdAt.getTime(),
-				pair: tokenPair,
-				price,
+				assetsOption,
+				expirationOption,
 				quantity,
 			},
 			sendEvent
