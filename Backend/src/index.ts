@@ -244,7 +244,7 @@ app.post("/user/:userId/createOrders", async (req: Request, res: Response) => {
 
 		addOrder(
 			{
-				id: userIdInt, // Use the converted userId (integer)
+				id: order.id.toString(), // Use the converted userId (integer)
 				pair: assetsSelector.split(":")[0],
 				quantity,
 				type: assetsOption,
@@ -255,6 +255,27 @@ app.post("/user/:userId/createOrders", async (req: Request, res: Response) => {
 		);
 
 		res.status(201).json(order);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ error: "Internal server error" });
+	}
+});
+
+app.post("/dummy", async (req: Request, res: Response) => {
+	try {
+		const { order1Id, order2Id, quantity } = req.body;
+
+		if (!order1Id || !order2Id || !quantity) {
+			res.status(400).json({ error: "Missing required fields" });
+			return;
+		}
+
+		function sendEvent(data: any) {
+			io.emit("matching-pairs", data);
+		}
+
+		updateOrderQuantity(order1Id, quantity, sendEvent);
+		updateOrderQuantity(order2Id, quantity, sendEvent);
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ error: "Internal server error" });

@@ -35,6 +35,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { toast } from "sonner";
 
 // buyOrderId: 1;
 // buyOrderPrice: " 0.00099700";
@@ -57,14 +58,14 @@ export type Payment = {
 export const columns: ColumnDef<Payment>[] = [
 	{
 		accessorKey: "buyOrderId",
-		header: "Client 1",
+		header: "Order 1 ID",
 		cell: ({ row }) => (
 			<div className="capitalize">{row.getValue("buyOrderId")}</div>
 		),
 	},
 	{
 		accessorKey: "sellOrderId",
-		header: "Client 2",
+		header: "Order 2 ID",
 		cell: ({ row }) => (
 			<div className="capitalize">{row.getValue("sellOrderId")}</div>
 		),
@@ -122,6 +123,27 @@ export const columns: ColumnDef<Payment>[] = [
 		cell: ({ row }) => {
 			const payment = row.original;
 
+			const handleClick = () => {
+				// Approve the payment
+				const order1Id = payment.buyOrderId;
+				const order2Id = payment.sellOrderId;
+				const quantity = payment.quantity;
+
+				// Call the backend to approve the payment
+				const response = fetch("http://localhost:8000/dummy", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ order1Id, order2Id, quantity }),
+				})
+					.then((res) => {
+						toast.success("Payment approved successfully.");
+					})
+					.catch((error) => {
+						toast.error("Failed to approve payment.");
+					});
+			};
 			return (
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
@@ -132,11 +154,7 @@ export const columns: ColumnDef<Payment>[] = [
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
 						<DropdownMenuLabel>Actions</DropdownMenuLabel>
-						<DropdownMenuItem
-							onClick={() =>
-								navigator.clipboard.writeText(payment.id)
-							}
-						>
+						<DropdownMenuItem onClick={handleClick}>
 							Approve Match
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
