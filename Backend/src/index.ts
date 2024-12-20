@@ -9,11 +9,11 @@ const app = express();
 const server = createServer(app);
 
 const io = new Server(server, {
-	cors: {
-		origin: "http://localhost:3000", // Allow frontend origin
-		methods: ["GET", "POST"],
-		credentials: true,
-	},
+  cors: {
+    origin: "http://localhost:3000", // Allow frontend origin
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
 });
 
 // Calling Binance API in 5 seconds interval
@@ -37,72 +37,74 @@ const io = new Server(server, {
 
 // Middleware to parse JSON requests
 app.use(
-	cors({
-		origin: "http://localhost:3000", // Replace with your frontend URL
-		methods: ["GET", "POST"],
-		credentials: true,
-	})
+  cors({
+    origin: "http://localhost:3000", // Replace with your frontend URL
+    methods: ["GET", "POST"],
+    credentials: true,
+  })
 );
 app.use(express.json());
 
+// // Sign in a user and store the socket ID
+// app.post("/signin", async (req, res) => {
+//   try {
+//     interface RequestBody {
+//       email: string;
+//       name: string;
+//       socketId: string;
+//     }
+
+//     const { email, name, socketId }: RequestBody = req.body;
+
+//     if (!email || !socketId) {
+//       res.status(400).json({ error: "Email and socketId are required" });
+//       return;
+//     }
+
+//     // Find user
+//     let user = await db.user.findUnique({
+//       where: { email },
+//     });
+
+//     if (!user) {
+//       // Create user
+//       user = await db.user.create({
+//         data: {
+//           email,
+//           name,
+//           socketId,
+//         },
+//         include: {
+//           wallet: {
+//             include: {
+//               tokens: true,
+//             },
+//           },
+//         },
+//       });
+//     } else {
+//       // Update user with the latest socketId
+//       user = await db.user.update({
+//         where: { id: user.id },
+//         data: { socketId },
+//         include: {
+//           wallet: {
+//             include: {
+//               tokens: true,
+//             },
+//           },
+//         },
+//       });
+//     }
+
+//     res.status(200).json(user);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// });
+
 // Sign in a user and store the socket ID
-app.post("/signin", async (req, res) => {
-	try {
-		interface RequestBody {
-			email: string;
-			name: string;
-			socketId: string;
-		}
-
-		const { email, name, socketId }: RequestBody = req.body;
-
-		if (!email || !socketId) {
-			res.status(400).json({ error: "Email and socketId are required" });
-			return;
-		}
-
-		// Find user
-		let user = await db.user.findUnique({
-			where: { email },
-		});
-
-		if (!user) {
-			// Create user
-			user = await db.user.create({
-				data: {
-					email,
-					name,
-					socketId,
-				},
-				include: {
-					wallet: {
-						include: {
-							tokens: true,
-						},
-					},
-				},
-			});
-		} else {
-			// Update user with the latest socketId
-			user = await db.user.update({
-				where: { id: user.id },
-				data: { socketId },
-				include: {
-					wallet: {
-						include: {
-							tokens: true,
-						},
-					},
-				},
-			});
-		}
-
-		res.status(200).json(user);
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error" });
-	}
-});
 
 // Create an order
 // app.post("/orders", async (req: Request, res: Response) => {
@@ -159,208 +161,233 @@ app.post("/signin", async (req, res) => {
 // 	}
 // });
 
+app.get("/users/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const userIdInt = parseInt(userId, 10);
+
+    if (isNaN(userIdInt)) {
+      res.status(400).json({ error: "Invalid userId format" });
+      return;
+    }
+
+    // Fetch user with wallet and tokens
+    let user = await db.user.findUnique({
+      where: { id: userIdInt },
+      include: {
+        wallet: {
+          include: {
+            tokens: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 app.post("/user/:userId/createOrders", async (req: Request, res: Response) => {
-	try {
-		// Get userId from URL params and convert it to an integer
-		const { userId } = req.params;
-		const userIdInt = parseInt(userId, 10); // Convert userId to an integer
+  try {
+    // Get userId from URL params and convert it to an integer
+    const { userId } = req.params;
+    const userIdInt = parseInt(userId, 10); // Convert userId to an integer
 
-		// Validate if userId is a valid integer
-		if (isNaN(userIdInt)) {
-			res.status(400).json({ error: "Invalid userId format" });
-			return;
-		}
+    // Validate if userId is a valid integer
+    if (isNaN(userIdInt)) {
+      res.status(400).json({ error: "Invalid userId format" });
+      return;
+    }
 
-		// Get other fields from the request body
-		const {
-			assetsSelector,
-			quantity,
-			assetsOption,
-			expirationOption,
-			expiryDate,
-			durationUnit,
-			durationValue,
-		} = req.body;
+    // Get other fields from the request body
+    const {
+      assetsSelector,
+      quantity,
+      assetsOption,
+      expirationOption,
+      expiryDate,
+      durationUnit,
+      durationValue,
+    } = req.body;
 
-		// Validate the input
-		if (
-			!assetsSelector ||
-			!quantity ||
-			!assetsOption ||
-			!expirationOption
-		) {
-			res.status(400).json({ error: "Missing required fields" });
-			return;
-		}
+    // Validate the input
+    if (!assetsSelector || !quantity || !assetsOption || !expirationOption) {
+      res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
 
-		// Determine the expiry date based on the provided options
-		let calculatedExpiryDate: Date | null = null;
+    // Determine the expiry date based on the provided options
+    let calculatedExpiryDate: Date | null = null;
 
-		if (expirationOption === "SPECIFIC_DATE") {
-			if (!expiryDate) {
-				res.status(400).json({
-					error: "Expiration date is required for SPECIFIC_DATE option",
-				});
-				return;
-			}
-			calculatedExpiryDate = new Date(expiryDate);
-		} else if (expirationOption === "DURATION") {
-			if (!durationUnit || !durationValue) {
-				res.status(400).json({
-					error: "Duration unit and value are required for DURATION option",
-				});
-				return;
-			}
-			const now = new Date();
-			const multiplier = durationUnit === "minutes" ? 60000 : 3600000; // minutes or hours
-			calculatedExpiryDate = new Date(
-				now.getTime() + durationValue * multiplier
-			);
-		} else {
-			res.status(400).json({ error: "Invalid expiration option" });
-			return;
-		}
+    if (expirationOption === "SPECIFIC_DATE") {
+      if (!expiryDate) {
+        res.status(400).json({
+          error: "Expiration date is required for SPECIFIC_DATE option",
+        });
+        return;
+      }
+      calculatedExpiryDate = new Date(expiryDate);
+    } else if (expirationOption === "DURATION") {
+      if (!durationUnit || !durationValue) {
+        res.status(400).json({
+          error: "Duration unit and value are required for DURATION option",
+        });
+        return;
+      }
+      const now = new Date();
+      const multiplier = durationUnit === "minutes" ? 60000 : 3600000; // minutes or hours
+      calculatedExpiryDate = new Date(
+        now.getTime() + durationValue * multiplier
+      );
+    } else {
+      res.status(400).json({ error: "Invalid expiration option" });
+      return;
+    }
 
-		// Create the order in the database
-		const order = await db.order.create({
-			data: {
-				userId: userIdInt, // Use the converted userId (integer)
-				assetsSelector,
-				quantity,
-				assetsOption,
-				expirationOption,
-				expiryDate: calculatedExpiryDate,
-				durationUnit: durationUnit ?? null,
-				durationValue: durationValue ?? null,
-				settledQuantity: 0,
-			},
-		});
+    // Create the order in the database
+    const order = await db.order.create({
+      data: {
+        userId: userIdInt,
+        assetsSelector,
+        quantity,
+        assetsOption,
+        expirationOption,
+        expiryDate: calculatedExpiryDate,
+        durationUnit: durationUnit ?? null,
+        durationValue: durationValue ?? null,
+        // settledQuantity: 0,
+      },
+    });
 
-		// Emit the order to the event stream
-		function sendEvent(data: any) {
-			// Example event emitter logic
-			io.emit("matching-pairs", data);
-		}
+    // Emit the order to the event stream
+    function sendEvent(data: any) {
+      // Example event emitter logic
+      io.emit("matching-pairs", data);
+    }
 
-		addOrder(
-			{
-				id: order.id.toString(), // Use the converted userId (integer)
-				pair: assetsSelector.split(":")[0],
-				quantity,
-				type: assetsOption,
-				orderPlacedTime: expiryDate,
-				price: assetsSelector.split(":")[1],
-			},
-			sendEvent
-		);
+    addOrder(
+      {
+        id: order.id.toString(), // Use the converted userId (integer)
+        pair: assetsSelector.split(":")[0],
+        quantity,
+        type: assetsOption,
+        orderPlacedTime: expiryDate,
+        price: assetsSelector.split(":")[1],
+      },
+      sendEvent
+    );
 
-		res.status(201).json(order);
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error" });
-	}
+    res.status(201).json(order);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 app.post("/dummy", async (req: Request, res: Response) => {
-	try {
-		const { order1Id, order2Id, quantity } = req.body;
+  try {
+    const { order1Id, order2Id, quantity } = req.body;
 
-		if (!order1Id || !order2Id || !quantity) {
-			res.status(400).json({ error: "Missing required fields" });
-			return;
-		}
+    if (!order1Id || !order2Id || !quantity) {
+      res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
 
-		function sendEvent(data: any) {
-			io.emit("matching-pairs", data);
-		}
+    function sendEvent(data: any) {
+      io.emit("matching-pairs", data);
+    }
 
-		updateOrderQuantity(order1Id, quantity, sendEvent);
-		updateOrderQuantity(order2Id, quantity, sendEvent);
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error" });
-	}
+    updateOrderQuantity(order1Id, quantity, sendEvent);
+    updateOrderQuantity(order2Id, quantity, sendEvent);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // Get previous orders for a user
 app.get("/users/:userId/orders", async (req: Request, res: Response) => {
-	try {
-		const { userId } = req.params;
+  try {
+    const { userId } = req.params;
 
-		// Fetch orders for the user
-		const orders = await db.order.findMany({
-			where: { userId: parseInt(userId) },
-		});
+    // Fetch orders for the user
+    const orders = await db.order.findMany({
+      where: { userId: parseInt(userId) },
+    });
 
-		res.status(200).json(orders);
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error" });
-	}
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // Get details of a specific order
 app.get("/orders/:orderId", async (req: Request, res: Response) => {
-	try {
-		const { orderId } = req.params;
+  try {
+    const { orderId } = req.params;
 
-		// Fetch the order details
-		const order = await db.order.findUnique({
-			where: { id: parseInt(orderId) },
-		});
+    // Fetch the order details
+    const order = await db.order.findUnique({
+      where: { id: parseInt(orderId) },
+    });
 
-		if (!order) {
-			res.status(404).json({ error: "Order not found" });
-			return;
-		}
+    if (!order) {
+      res.status(404).json({ error: "Order not found" });
+      return;
+    }
 
-		res.status(200).json(order);
-	} catch (error) {
-		console.error(error);
-		res.status(500).json({ error: "Internal server error" });
-	}
+    res.status(200).json(order);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // Real-time updates using Socket.IO
 io.on("connection", (socket) => {
-	console.log("A user connected");
+  console.log("A user connected");
 
-	// Listen for order status updates from the manager
-	socket.on("update_order_status", async ({ orderId, quantitySettled }) => {
-		try {
-			const order = await db.order.update({
-				where: { id: parseInt(orderId) },
-				data: {
-					settledQuantity: {
-						increment: quantitySettled,
-					},
-				},
-			});
+  // Listen for order status updates from the manager
+  socket.on("update_order_status", async ({ orderId, quantitySettled }) => {
+    try {
+      const order = await db.order.update({
+        where: { id: parseInt(orderId) },
+        data: {
+          settledQuantity: {
+            increment: quantitySettled,
+          },
+        },
+      });
 
-			function sendEvent(data: any) {
-				console.log(order);
-				console.log(data);
-				// Broadcast the updated order to all clients
-				io.emit("order_status_updated", order);
-				// Broadcast the matching pair to managers
-				io.emit("matching-pairs", data);
-			}
+      function sendEvent(data: any) {
+        console.log(order);
+        console.log(data);
+        // Broadcast the updated order to all clients
+        io.emit("order_status_updated", order);
+        // Broadcast the matching pair to managers
+        io.emit("matching-pairs", data);
+      }
 
-			updateOrderQuantity(
-				order.id.toString(),
-				quantitySettled,
-				sendEvent
-			);
-		} catch (error) {
-			console.error("Error updating order status:", error);
-		}
-	});
+      updateOrderQuantity(order.id.toString(), quantitySettled, sendEvent);
+    } catch (error) {
+      console.error("Error updating order status:", error);
+    }
+  });
 
-	socket.on("disconnect", () => {
-		console.log("A user disconnected");
-	});
+  socket.on("disconnect", () => {
+    console.log("A user disconnected");
+  });
 });
 
 server.listen(8000, () => {
-	console.log("server running at http://localhost:8000");
+  console.log("server running at http://localhost:8000");
 });
